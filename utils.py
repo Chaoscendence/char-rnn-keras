@@ -33,7 +33,7 @@ class TextHelper():
             return th
 
     def load_text(self):
-        with open(self.data_dir, 'r') as file:
+        with open(self.data_dir, 'r', encoding=self.encoding) as file:
             lines = file.readlines()
             self.sequences = lines
             self.sequences.sort(key=lambda s: len(s))
