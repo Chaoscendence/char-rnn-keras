@@ -38,7 +38,7 @@ class TextHelper():
             self.sequences = lines
             self.sequences.sort(key=lambda s: len(s))
 
-            text = ' '.join(lines)
+            text = ''.join(lines)
             chars = sorted(list(set(text))+[self.char_padding])
             print('total chars:', len(chars))
             self.vacob_size = len(chars)
