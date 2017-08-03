@@ -65,7 +65,14 @@ class TextHelper():
         return next_batch
 
     def create_sequences_for_training(self, batch):
-        """Tensor shpae - (batch_size, timesteps, input_dim)"""
+        """        
+        Parameters:
+            batch : a list of sequences 
+            
+        Return:
+            X_tensors : of shape (batch_size, timesteps, vacob_size) 
+            Y_tensors : of shape (batch_size, vacob_size)
+        """
         if self.timesteps >= len(batch[0]):
                 print('The specified number of unrolled time steps is bigger than '
                       'length of sequences. We need to pad more zeros in front of'
