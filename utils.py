@@ -24,7 +24,6 @@ class TextHelper():
     @classmethod
     def save(cls, file_obj, where='text_helper.cpi'):
         with open(where, 'wb') as f:
-            #self.sequences = None
             cPickle.dump(file_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
     @classmethod
@@ -36,9 +35,6 @@ class TextHelper():
     def load_text(self):
         with open(self.data_dir, 'r') as file:
             lines = file.readlines()
-            #single_large_string = "".join(lines)
-            #many_smiles = single_large_string.split('\\r\\n')
-            print(len(lines))
             self.sequences = lines
             self.sequences.sort(key=lambda s: len(s))
 
@@ -70,10 +66,10 @@ class TextHelper():
 
     def create_sequences_for_training(self, batch):
         """Tensor shpae - (batch_size, timesteps, input_dim)"""
-        #if self.timesteps >= len(batch[0]):
-        #        print('The specified number of unrolled time steps is bigger than '
-        #              'length of sequences. We need to pad more zeros in front of'
-        #              'each sequence. Make sure this is what you want.')
+        if self.timesteps >= len(batch[0]):
+                print('The specified number of unrolled time steps is bigger than '
+                      'length of sequences. We need to pad more zeros in front of'
+                      'each sequence. Make sure this is what you want.')
         X, Y = [], []
         for seq in batch:
             padded_seq = ''.join(['^']*(self.timesteps-1)) + seq
@@ -81,9 +77,7 @@ class TextHelper():
                 X.append(padded_seq[i:i+self.timesteps])
                 Y.append(padded_seq[i+self.timesteps])
 
-        X_tensor = []#np.array((len(X), self.timesteps, self.input_dim),
-                     #       dtype=np.bool)
-        Y_tensor = [] #np.array((len(X), 1, self.input_dim), dtype=np.bool)
+        X_tensor, Y_tensor = [], []
         for i in range(len(X)):
             x_tensor = self._vocab_string_to_array(X[i])
             X_tensor.append(x_tensor)
