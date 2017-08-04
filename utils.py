@@ -28,20 +28,9 @@ class TextHelper():
         self.char_padding = '^'
         self.sequences_merging = sequences_merging
         self.merged_sequence = None
+
         self.load_text()
         self.split_text()
-
-    @classmethod
-    def save(cls, file_obj, where='text_helper.cpi'):
-        with open(where, 'wb') as f:
-            #self.sequences = None
-            cPickle.dump(file_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
-
-    @classmethod
-    def load(cls, where):
-        with open(where, 'rb') as f:
-            th = cPickle.load(f)
-            return th
 
     def load_text(self):
         with open(self.data_dir, 'r') as file:
@@ -50,7 +39,9 @@ class TextHelper():
             self.sequences.sort(key=lambda s: len(s))
 
             self.merged_sequence = ''.join(lines)
-            chars = sorted(list(set(self.merged_sequence))+[self.char_padding])
+            #chars = sorted(list(set(self.merged_sequence))+[self.char_padding])
+            chars = sorted(
+                list(set(self.merged_sequence)) + [self.char_padding])
             self.vacob_size = len(chars)
             char_indices = dict((c, i) for i, c in enumerate(chars))
             indices_char = dict((i, c) for i, c in enumerate(chars))
@@ -59,8 +50,7 @@ class TextHelper():
     def split_text(self):
         """
         Support two ways:
-        (1) Merge all the lines into a single string and then randomly split into
-        a list of sequences
+        (1) Merge all the lines into a single string.
         (2) Treat each line as a single sequence.
         """
         if self.sequences_merging:
@@ -72,19 +62,7 @@ class TextHelper():
         for seq in self.sequences:
             X_tensors, Y_tensors = self.create_inputs_and_targets(seq)
             XY_tensors.append([X_tensors, Y_tensors])
-
-    def prepare_tensors_for_training(self):
-        # Use merged_sequences
-        if self.sequences_merging:
-            return self.create_inputs_and_targets(self.merged_sequence)
-        else:# Create input sequences and target separately
-            batches = []
-            while True:
-                next_batch = self.prepare_next_batch()
-                if next_batch is None:
-                    break
-                batches.append(next_batch)
-            return batches
+        return XY_tensors
 
     def prepare_next_batch(self):
         # Grab $batch_size$ samples
@@ -148,6 +126,18 @@ class TextHelper():
         for i in range(len(string)):
             onehot_array[i, char_indices[string[i]]] = True
         return onehot_array
+
+    @classmethod
+    def save(cls, file_obj, where='text_helper.cpi'):
+        with open(where, 'wb') as f:
+            #self.sequences = None
+            cPickle.dump(file_obj, f, protocol=cPickle.HIGHEST_PROTOCOL)
+
+    @classmethod
+    def load(cls, where):
+        with open(where, 'rb') as f:
+            th = cPickle.load(f)
+            return th
 
 
 
