@@ -1,19 +1,18 @@
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import division
-import os
 import numpy as np
 from six.moves import cPickle
 
 
 class TextHelper():
-    """Help to load text and create batches of sequences
-
-        (1) Merge all the sequences to a single large one
-        (2) Treat each sequence separately
+    """ A helper class for loading text and preparing tensors for training using
+    Keras.
+        There are two ways of splitting the loaded text.
+            1. Merge all the sequences to a single sequence of chars.
+            2. Treat each line/sequence separately
     """
-    def __init__(self, data_dir, batch_size=50,
-                 timesteps=50,
+    def __init__(self, data_dir, batch_size=50, timesteps=50,
                  sequences_merging=False,#Merge all the sequence to a single str
                  encoding='utf-8'):
         self.data_dir = data_dir
@@ -50,7 +49,7 @@ class TextHelper():
     def split_text(self):
         """
         Support two ways:
-        (1) Merge all the lines into a single string.
+        (1) Merge all the lines into a single sequence.
         (2) Treat each line as a single sequence.
         """
         if self.sequences_merging:
