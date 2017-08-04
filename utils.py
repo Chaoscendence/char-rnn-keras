@@ -5,8 +5,13 @@ import os
 import numpy as np
 from six.moves import cPickle
 
+
 class TextHelper():
-    """Help to load text and create batches of sequences"""
+    """Help to load text and create batches of sequences
+
+        (1) Merge all the sequences to a single large one
+        (2) Treat each sequence separately
+    """
     def __init__(self, data_dir, batch_size=50, timesteps=50,
                  sequences_merging=False,#Merge all the sequence to a single str
                  encoding='utf-8'):
@@ -15,7 +20,7 @@ class TextHelper():
         self.timesteps = timesteps
         self.encoding = encoding
         self.sequences = []
-        self.batch_count = 0
+        self.batch_pointer = 0
         self.input_dim = 1
         self.vacob = []
         self.vacob_size = 0
@@ -24,6 +29,7 @@ class TextHelper():
         self.sequences_merging = sequences_merging
         self.merged_sequence = None
         self.load_text()
+        self.split_text()
 
     @classmethod
     def save(cls, file_obj, where='text_helper.cpi'):
@@ -40,43 +46,52 @@ class TextHelper():
     def load_text(self):
         with open(self.data_dir, 'r') as file:
             lines = file.readlines()
-            #single_large_string = "".join(lines)
-            #many_smiles = single_large_string.split('\\r\\n')
-            print(len(lines))
             self.sequences = lines
             self.sequences.sort(key=lambda s: len(s))
 
             self.merged_sequence = ''.join(lines)
             chars = sorted(list(set(self.merged_sequence))+[self.char_padding])
-            print('total chars:', len(chars))
             self.vacob_size = len(chars)
             char_indices = dict((c, i) for i, c in enumerate(chars))
             indices_char = dict((i, c) for i, c in enumerate(chars))
             self.vacob = [char_indices, indices_char]
 
-    def create_sequences_and_targets(self, long_string):
-        if len(long_string) < self.timesteps:
-            print('String is not sufficiently long. Won\'t proceed further.')
-        X_tensor, Y_tensor = [], []
-        for i in range(len(long_string) - self.timesteps):
-            x = long_string[i: self.timesteps + i]
-            y = long_string[self.timesteps + i]
-            X_tensor.append(self.vocab_string_to_array(x))
-            Y_tensor.append(self.vocab_string_to_array(y))
-        X_tensor = np.array(X_tensor)
-        Y_tensor = np.squeeze(np.array(Y_tensor))
-        return X_tensor, Y_tensor
+    def split_text(self):
+        """
+        Support two ways:
+        (1) Merge all the lines into a single string and then randomly split into
+        a list of sequences
+        (2) Treat each line as a single sequence.
+        """
+        if self.sequences_merging:
+            self.sequences = [self.merged_sequence]
 
-    def create_tensors_for_training(self):
-        if self.sequences_merging: # Use merged_sequences
-            return self.create_sequences_and_targets(self.merged_sequence)
+    def prepare_xytensors(self):
+        """Return a single batch containing all the data"""
+        XY_tensors = []
+        for seq in self.sequences:
+            X_tensors, Y_tensors = self.create_inputs_and_targets(seq)
+            XY_tensors.append([X_tensors, Y_tensors])
 
-    def next_batch(self):
+    def prepare_tensors_for_training(self):
+        # Use merged_sequences
+        if self.sequences_merging:
+            return self.create_inputs_and_targets(self.merged_sequence)
+        else:# Create input sequences and target separately
+            batches = []
+            while True:
+                next_batch = self.prepare_next_batch()
+                if next_batch is None:
+                    break
+                batches.append(next_batch)
+            return batches
+
+    def prepare_next_batch(self):
         # Grab $batch_size$ samples
-        if self.batch_count >= len(self.sequences):
+        if self.batch_pointer >= len(self.sequences):
             return None
-        next_batch = self.sequences[self.batch_count :
-                        self.batch_count+self.batch_size]
+        next_batch = self.sequences[self.batch_pointer :
+                        self.batch_pointer+self.batch_size]
         # Padding sequences
         for i in range(len(next_batch)):
             if len(next_batch[i]) == len(next_batch[-1]):
@@ -86,11 +101,24 @@ class TextHelper():
                     "".join(['']*(len(next_batch[-1])-len(next_batch[i])))\
                     +next_batch[i]
 
-        self.batch_count += self.batch_size
-        X_tensor, Y_tensor = self.sequences_to_tensors(next_batch)
+        self.batch_pointer += self.batch_size
+        X_tensor, Y_tensor = self.convert_sequences_to_tensors(next_batch)
         return X_tensor, Y_tensor
 
-    def sequences_to_tensors(self, batch):
+    def create_inputs_and_targets(self, long_string, step=1):
+        if len(long_string) < self.timesteps:
+            print('String is not sufficiently long. Won\'t proceed further.')
+        X_tensor, Y_tensor = [], []
+        for i in range(0, len(long_string) - self.timesteps, step):
+            x = long_string[i: self.timesteps + i]
+            y = long_string[self.timesteps + i]
+            X_tensor.append(self.convert_string_to_tensor(x))
+            Y_tensor.append(self.convert_string_to_tensor(y))
+        X_tensor = np.array(X_tensor)
+        Y_tensor = np.squeeze(np.array(Y_tensor))
+        return X_tensor, Y_tensor
+
+    def convert_sequences_to_tensors(self, batch):
         """Tensor shpae - (batch_size, timesteps, input_dim)"""
         #if self.timesteps >= len(batch[0]):
         #   print('The specified number of unrolled time steps is bigger than '
@@ -105,16 +133,16 @@ class TextHelper():
 
         X_tensor, Y_tensor = [], []
         for i in range(len(X)):
-            x_tensor = self.vocab_string_to_array(X[i])
+            x_tensor = self.convert_string_to_tensor(X[i])
             X_tensor.append(x_tensor)
-            y_tensor = self.vocab_string_to_array(Y[i])
+            y_tensor = self.convert_string_to_tensor(Y[i])
             Y_tensor.append(y_tensor)
 
         X_tensor = np.array(X_tensor)
         Y_tensor = np.squeeze(np.array(Y_tensor))
         return X_tensor, Y_tensor
 
-    def vocab_string_to_array(self, string):
+    def convert_string_to_tensor(self, string):
         char_indices, _ = self.vacob
         onehot_array = np.zeros((len(string), self.vacob_size), dtype=bool)
         for i in range(len(string)):
