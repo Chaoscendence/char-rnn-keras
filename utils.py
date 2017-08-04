@@ -12,7 +12,8 @@ class TextHelper():
         (1) Merge all the sequences to a single large one
         (2) Treat each sequence separately
     """
-    def __init__(self, data_dir, batch_size=50, timesteps=50,
+    def __init__(self, data_dir, batch_size=50,
+                 timesteps=50,
                  sequences_merging=False,#Merge all the sequence to a single str
                  encoding='utf-8'):
         self.data_dir = data_dir
@@ -39,7 +40,6 @@ class TextHelper():
             self.sequences.sort(key=lambda s: len(s))
 
             self.merged_sequence = ''.join(lines)
-            #chars = sorted(list(set(self.merged_sequence))+[self.char_padding])
             chars = sorted(
                 list(set(self.merged_sequence)) + [self.char_padding])
             self.vacob_size = len(chars)
