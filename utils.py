@@ -28,7 +28,6 @@ class TextHelper():
         self.char_padding = '^'
         self.sequences_merging = sequences_merging
         self.merged_sequence = None
-
         self.load_text()
         self.split_text()
 
@@ -36,8 +35,7 @@ class TextHelper():
         with open(self.data_dir, 'r') as file:
             lines = file.readlines()
             self.sequences = lines
-            self.sequences.sort(key=lambda s: len(s))
-
+            #self.sequences.sort(key=lambda s: len(s))
             self.merged_sequence = ''.join(lines)
             chars = sorted(
                 list(set(self.merged_sequence)) + [self.char_padding])
