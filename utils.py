@@ -12,12 +12,12 @@ class TextHelper():
             1. Merge all the sequences to a single sequence of chars.
             2. Treat each line/sequence separately
     """
-    def __init__(self, data_dir, batch_size=50, timesteps=50,
-                 sequences_merging=False,#Merge all the sequence to a single str
-                 encoding='utf-8'):
+    def __init__(self, data_dir, batch_size=50, time_steps=50, seq_step=50,
+                 sequences_merging=False, encoding='utf-8'):
         self.data_dir = data_dir
         self.batch_size = batch_size
-        self.timesteps = timesteps
+        self.time_steps = time_steps
+        self.seq_step = seq_step
         self.encoding = encoding
         self.sequences = []
         self.batch_pointer = 0
@@ -29,7 +29,7 @@ class TextHelper():
         self.sequences_merging = sequences_merging
         self.merged_sequence = None
         self.load_text()
-        self.split_text()
+        self.preprocess()
 
     def load_text(self):
         with open(self.data_dir, 'r') as file:
@@ -44,7 +44,7 @@ class TextHelper():
             indices_char = dict((i, c) for i, c in enumerate(chars))
             self.vacob = [char_indices, indices_char]
 
-    def split_text(self):
+    def preprocess(self):
         """
         Support two ways:
         (1) Merge all the lines into a single sequence.
@@ -57,7 +57,8 @@ class TextHelper():
         """Return a single batch containing all the data"""
         XY_tensors = []
         for seq in self.sequences:
-            X_tensors, Y_tensors = self.create_inputs_and_targets(seq)
+            X_tensors, Y_tensors = self.create_inputs_and_targets(
+                long_string=seq, step=self.seq_step)
             XY_tensors.append([X_tensors, Y_tensors])
         return XY_tensors
 
@@ -81,12 +82,12 @@ class TextHelper():
         return X_tensor, Y_tensor
 
     def create_inputs_and_targets(self, long_string, step=1):
-        if len(long_string) < self.timesteps:
+        if len(long_string) < self.time_steps:
             print('String is not sufficiently long. Won\'t proceed further.')
         X_tensor, Y_tensor = [], []
-        for i in range(0, len(long_string) - self.timesteps, step):
-            x = long_string[i: self.timesteps + i]
-            y = long_string[self.timesteps + i]
+        for i in range(0, len(long_string) - self.time_steps, step):
+            x = long_string[i: self.time_steps + i]
+            y = long_string[self.time_steps + i]
             X_tensor.append(self.convert_string_to_tensor(x))
             Y_tensor.append(self.convert_string_to_tensor(y))
         X_tensor = np.array(X_tensor)
@@ -101,10 +102,10 @@ class TextHelper():
         #         'each sequence. Make sure this is what you want.')
         X, Y = [], []
         for seq in batch:
-            padded_seq = ''.join(['^']*(self.timesteps-1)) + seq
+            padded_seq = ''.join(['^']*(self.time_steps-1)) + seq
             for i in range(len(seq)-1):
-                X.append(padded_seq[i:i+self.timesteps])
-                Y.append(padded_seq[i+self.timesteps])
+                X.append(padded_seq[i:i+self.time_steps])
+                Y.append(padded_seq[i+self.time_steps])
 
         X_tensor, Y_tensor = [], []
         for i in range(len(X)):
